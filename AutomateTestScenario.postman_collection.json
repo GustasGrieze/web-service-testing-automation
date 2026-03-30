@@ -1,0 +1,432 @@
+{
+  "info": {
+    "_postman_id": "71d5c0fe-b85f-4465-a932-9095a9996d14",
+    "name": "Automate test scenario Copy",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "53592016",
+    "_collection_link": "https://go.postman.co/collection/53592016-71d5c0fe-b85f-4465-a932-9095a9996d14?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Create and send a new email",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const email = \"zdynebly@gmail.com\";\r",
+              "const uniqueTs = Date.now();\r",
+              "\r",
+              "const subject = `API Test Email ${uniqueTs}`;\r",
+              "const labelName = `API_LABEL_${uniqueTs}`;\r",
+              "\r",
+              "const emailText =\r",
+              "`From: ${email}\r",
+              "To: ${email}\r",
+              "Subject: ${subject}\r",
+              "\r",
+              "Hello from Postman automated test!`;\r",
+              "\r",
+              "let base64 = Buffer.from(emailText).toString(\"base64\");\r",
+              "\r",
+              "let base64url = base64\r",
+              "  .replace(/\\+/g, \"-\")\r",
+              "  .replace(/\\//g, \"_\")\r",
+              "  .replace(/=+$/, \"\");\r",
+              "\r",
+              "pm.variables.set(\"rawMessage\", base64url);      // local/request scope\r",
+              "pm.environment.set(\"subject\", subject);         // environment scope\r",
+              "pm.environment.set(\"labelName\", labelName);     // environment scope\r",
+              "pm.environment.set(\"testEmail\", email);         // environment scope"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "const jsonData = pm.response.json();\r",
+              "\r",
+              "pm.test(\"Message id exists\", function () {\r",
+              "    pm.expect(jsonData.id).to.exist;\r",
+              "    pm.expect(jsonData.id).to.be.a(\"string\");\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Thread id exists\", function () {\r",
+              "    pm.expect(jsonData.threadId).to.exist;\r",
+              "    pm.expect(jsonData.threadId).to.be.a(\"string\");\r",
+              "});\r",
+              "\r",
+              "pm.environment.set(\"messageId\", jsonData.id);\r",
+              "pm.environment.set(\"threadId\", jsonData.threadId);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"raw\": \"{{rawMessage}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+          "protocol": "https",
+          "host": [
+            "gmail",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "gmail",
+            "v1",
+            "users",
+            "me",
+            "messages",
+            "send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create Label",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "const jsonData = pm.response.json();\r",
+              "\r",
+              "pm.test(\"Label id exists\", function () {\r",
+              "    pm.expect(jsonData.id).to.exist;\r",
+              "    pm.expect(jsonData.id).to.be.a(\"string\");\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Created label name is correct\", function () {\r",
+              "    pm.expect(jsonData.name).to.eql(pm.environment.get(\"labelName\"));\r",
+              "});\r",
+              "\r",
+              "pm.environment.set(\"labelId\", jsonData.id);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"name\": \"{{labelName}}\",\r\n  \"labelListVisibility\": \"labelShow\",\r\n  \"messageListVisibility\": \"show\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://gmail.googleapis.com/gmail/v1/users/me/labels",
+          "protocol": "https",
+          "host": [
+            "gmail",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "gmail",
+            "v1",
+            "users",
+            "me",
+            "labels"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Add label to the email",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "const jsonData = pm.response.json();\r",
+              "const labelId = pm.environment.get(\"labelId\");\r",
+              "\r",
+              "pm.test(\"Response contains labelIds array\", function () {\r",
+              "    pm.expect(jsonData.labelIds).to.exist;\r",
+              "    pm.expect(jsonData.labelIds).to.be.an(\"array\");\r",
+              "});\r",
+              "\r",
+              "pm.test(\"New label was added to the message\", function () {\r",
+              "    pm.expect(jsonData.labelIds).to.include(labelId);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"addLabelIds\": [\"{{labelId}}\"]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://gmail.googleapis.com/gmail/v1/users/me/messages/{{messageId}}/modify",
+          "protocol": "https",
+          "host": [
+            "gmail",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "gmail",
+            "v1",
+            "users",
+            "me",
+            "messages",
+            "{{messageId}}",
+            "modify"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "List Messages by Label",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "const jsonData = pm.response.json();\r",
+              "const messageId = pm.environment.get(\"messageId\");\r",
+              "\r",
+              "pm.test(\"Messages array exists\", function () {\r",
+              "    pm.expect(jsonData.messages).to.exist;\r",
+              "    pm.expect(jsonData.messages).to.be.an(\"array\");\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Created message is in the filtered list\", function () {\r",
+              "    const ids = jsonData.messages.map(m => m.id);\r",
+              "    pm.expect(ids).to.include(messageId);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds={{labelId}}",
+          "protocol": "https",
+          "host": [
+            "gmail",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "gmail",
+            "v1",
+            "users",
+            "me",
+            "messages"
+          ],
+          "query": [
+            {
+              "key": "labelIds",
+              "value": "{{labelId}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Remove label from message",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "const jsonData = pm.response.json();\r",
+              "const labelId = pm.environment.get(\"labelId\");\r",
+              "\r",
+              "pm.test(\"Response contains labelIds array\", function () {\r",
+              "    pm.expect(jsonData.labelIds).to.exist;\r",
+              "    pm.expect(jsonData.labelIds).to.be.an(\"array\");\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Label was removed from the message\", function () {\r",
+              "    pm.expect(jsonData.labelIds).to.not.include(labelId);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"removeLabelIds\": [\"{{labelId}}\"]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://gmail.googleapis.com/gmail/v1/users/me/messages/{{messageId}}/modify",
+          "protocol": "https",
+          "host": [
+            "gmail",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "gmail",
+            "v1",
+            "users",
+            "me",
+            "messages",
+            "{{messageId}}",
+            "modify"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Delete label",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 204\", function () {\r",
+              "    pm.response.to.have.status(204);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Response body is empty\", function () {\r",
+              "    pm.expect(pm.response.text()).to.eql(\"\");\r",
+              "});\r",
+              "\r",
+              "pm.environment.unset(\"labelId\");"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "https://gmail.googleapis.com/gmail/v1/users/me/labels/{{labelId}}",
+          "protocol": "https",
+          "host": [
+            "gmail",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "gmail",
+            "v1",
+            "users",
+            "me",
+            "labels",
+            "{{labelId}}"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
+}
