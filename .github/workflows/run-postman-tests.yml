@@ -2,7 +2,7 @@ name: Scheduled Newman Gmail Tests
 
 on:
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -14,12 +14,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
 
       - name: Install Newman
         run: npm install -g newman
+
+      - name: Create reports directory
+        run: mkdir -p reports
 
       - name: Refresh Google access token
         run: |
@@ -30,8 +33,9 @@ jobs:
             -d "refresh_token=${{ secrets.GOOGLE_REFRESH_TOKEN }}" \
             -d "grant_type=refresh_token")
 
-          echo "$RESPONSE" > token_response.json
-          ACCESS_TOKEN=$(python3 -c "import json; print(json.load(open('token_response.json'))['access_token'])")
+          echo "$RESPONSE" > reports/token_response.json
+
+          ACCESS_TOKEN=$(python3 -c "import json; print(json.load(open('reports/token_response.json'))['access_token'])")
           echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
 
       - name: Run Postman collection with Newman
@@ -39,4 +43,13 @@ jobs:
           newman run "AutomateTestScenario.postman_collection.json" \
             -e "gmail-testing.postman_environment.json" \
             --env-var "access_token=${ACCESS_TOKEN}" \
-            --reporters cli
+            --reporters cli,json,junit \
+            --reporter-json-export reports/newman-report.json \
+            --reporter-junit-export reports/newman-report.xml
+
+      - name: Upload Newman reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-reports
+          path: reports
