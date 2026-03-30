@@ -36,7 +36,7 @@ jobs:
 
       - name: Run Postman collection with Newman
         run: |
-          newman run "Automate test scenario Copy.postman_collection.json" \
+          newman run "AutomateTestScenario.postman_collection.json" \
             -e "gmail-testing.postman_environment.json" \
             --env-var "access_token=${ACCESS_TOKEN}" \
             --reporters cli
