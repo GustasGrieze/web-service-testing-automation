@@ -1,0 +1,42 @@
+name: Scheduled Newman Gmail Tests
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-newman:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Refresh Google access token
+        run: |
+          RESPONSE=$(curl -s -X POST https://oauth2.googleapis.com/token \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "client_id=${{ secrets.GOOGLE_CLIENT_ID }}" \
+            -d "client_secret=${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+            -d "refresh_token=${{ secrets.GOOGLE_REFRESH_TOKEN }}" \
+            -d "grant_type=refresh_token")
+
+          echo "$RESPONSE" > token_response.json
+          ACCESS_TOKEN=$(python3 -c "import json; print(json.load(open('token_response.json'))['access_token'])")
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
+
+      - name: Run Postman collection with Newman
+        run: |
+          newman run "Automate test scenario Copy.postman_collection.json" \
+            -e "gmail-testing.postman_environment.json" \
+            --env-var "access_token=${ACCESS_TOKEN}" \
+            --reporters cli
